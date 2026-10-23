@@ -16,7 +16,25 @@ const Student = require("./Student");
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET;
 
-app.use(cors());
+// ==================================
+// CORS CONFIGURATION
+// ==================================
+
+const allowedOrigins = [
+    "http://localhost:3000",
+    "https://frontend-data-seven.vercel.app"
+];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error("Origin not allowed by CORS"));
+    }
+}));
+
 app.use(express.json());
 
 // ==================================
@@ -105,7 +123,7 @@ app.post("/auth/signup", async (req, res) => {
             password: hashedPassword
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             message: "Account created successfully.",
             user: {
                 id: user._id,
@@ -122,7 +140,7 @@ app.post("/auth/signup", async (req, res) => {
             });
         }
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Unable to create account."
         });
     }
@@ -149,7 +167,7 @@ app.post("/auth/login", async (req, res) => {
 
         if (!JWT_SECRET) {
             return res.status(500).json({
-                message: "JWT_SECRET is missing from .env."
+                message: "JWT_SECRET is missing from environment variables."
             });
         }
 
@@ -180,7 +198,7 @@ app.post("/auth/login", async (req, res) => {
             { expiresIn: "1h" }
         );
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Login successful.",
             token,
             user: {
@@ -192,7 +210,7 @@ app.post("/auth/login", async (req, res) => {
     } catch (error) {
         console.error("Login error:", error.message);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Unable to log in."
         });
     }
@@ -208,11 +226,11 @@ app.get("/students", authenticateToken, async (req, res) => {
             teacher: req.user.userId
         });
 
-        res.status(200).json(students);
+        return res.status(200).json(students);
     } catch (error) {
         console.error("Fetch error:", error.message);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to fetch students."
         });
     }
@@ -227,12 +245,15 @@ app.post("/students", authenticateToken, async (req, res) => {
         const { name, age, course, email } = req.body;
 
         if (
-            !name?.trim() ||
+            typeof name !== "string" ||
+            !name.trim() ||
             age === undefined ||
             age === null ||
             age === "" ||
-            !course?.trim() ||
-            !email?.trim()
+            typeof course !== "string" ||
+            !course.trim() ||
+            typeof email !== "string" ||
+            !email.trim()
         ) {
             return res.status(400).json({
                 message: "Name, age, course and email are required."
@@ -247,11 +268,11 @@ app.post("/students", authenticateToken, async (req, res) => {
             teacher: req.user.userId
         });
 
-        res.status(201).json(student);
+        return res.status(201).json(student);
     } catch (error) {
         console.error("Add error:", error.message);
 
-        res.status(400).json({
+        return res.status(400).json({
             message: error.message
         });
     }
@@ -274,12 +295,15 @@ app.put("/students/:id", authenticateToken, async (req, res) => {
         const { name, age, course, email } = req.body;
 
         if (
-            !name?.trim() ||
+            typeof name !== "string" ||
+            !name.trim() ||
             age === undefined ||
             age === null ||
             age === "" ||
-            !course?.trim() ||
-            !email?.trim()
+            typeof course !== "string" ||
+            !course.trim() ||
+            typeof email !== "string" ||
+            !email.trim()
         ) {
             return res.status(400).json({
                 message: "Name, age, course and email are required."
@@ -309,11 +333,11 @@ app.put("/students/:id", authenticateToken, async (req, res) => {
             });
         }
 
-        res.status(200).json(student);
+        return res.status(200).json(student);
     } catch (error) {
         console.error("Update error:", error.message);
 
-        res.status(400).json({
+        return res.status(400).json({
             message: error.message
         });
     }
@@ -344,21 +368,21 @@ app.delete("/students/:id", authenticateToken, async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Student deleted successfully.",
             student
         });
     } catch (error) {
         console.error("Delete error:", error.message);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to delete student."
         });
     }
 });
 
 // ==================================
-// CONNECT TO MONGODB AND START SERVER
+// CONNECT TO MONGODB
 // ==================================
 
 async function startServer() {
@@ -366,7 +390,11 @@ async function startServer() {
         const uri = process.env.MONGODB_URI;
 
         if (!uri) {
-            throw new Error("MONGODB_URI is missing from .env.");
+            throw new Error("MONGODB_URI is missing from environment variables.");
+        }
+
+        if (!JWT_SECRET) {
+            throw new Error("JWT_SECRET is missing from environment variables.");
         }
 
         await mongoose.connect(uri);
