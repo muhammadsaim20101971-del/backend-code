@@ -17,7 +17,13 @@ const studentSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true
+    },
+    teacher: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
     }
+    
 });
 
 module.exports = mongoose.model("Student", studentSchema);
